@@ -115,19 +115,19 @@ The raw probability of voting Donald Trump we estimated is 47.7%, which is shown
 
 ```{r, echo=F}
 kable(survey_data %>% 
-  summarise(support_trump=sum(vote_trump)/nrow(survey_data)), caption = "Table 1: Estimates of Supporting Trump")
+  summarise(support_trump=sum(vote_trump)/nrow(survey_data)), caption = "Estimates of Supporting Trump")
 ```
 
 We used a multilevel regression model with a binomial family grouped by state in model section which accounted for race, age group, gender, education level, state, and household income to predicate whether or not Trump would win. Through the Post-Stratification grouped by states, we get the Table 2, which represents the winners for each American State.  The second column of the Table 2 represents the proportion of voters in favor of voting for Donald Trump for each state. 
  
 ```{r, echo=F}
-kable(state_winner, caption = "Table 2: Winners for each American State")
+kable(state_winner, caption = "Winners for each American State")
 ```
  
 Based on winner and votes of each state on Table 2, we could get the estimates of total election votes for Jeo Biden and Donald Trump in the final American President Election. After summing up the electoral votes of each state for each winner, we could get the results, which are shown on Table 3.
  
 ```{r, echo=F}
-kable(election_result, caption = "Table 3: Total Votes of Donald Trump and Joe Biden")
+kable(election_result, caption = "Total Votes of Donald Trump and Joe Biden")
 ```
 
 From the data in Table 3, we can easily see based on our model and predication, Joe Biden would beat Donald Trump and win the election with the number of votes 477 vs 61.
