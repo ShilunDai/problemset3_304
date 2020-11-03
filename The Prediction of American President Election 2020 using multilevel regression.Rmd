@@ -17,16 +17,16 @@ library(broom)
 
 
 # Loading in the cleaned survey Data
-survey_data <- read_csv("./../outputs/data/survey_data.csv")
+survey_data <- read_csv("./../outputs/survey_data.csv")
 
 # Loading in the cleaned census Data
-census_data <- read_csv("./../outputs/data/census_data.csv")
+census_data <- read_csv("./../outputs/census_data.csv")
 
 ```
 
 
 # Model
-In this project, we are interested in predicting the popular vote outcome of the USA federal election. To do this we built a multilevel regression model with a binomial family based on the 25th June, 2020 Nationscape Data set (survey_data). Then, we applied the model to the census_data which we obtained from the 2018 American Community Surveys to make the prediction. In the following sub-sections, we will introduce our model and the post-stratification strategies specifically. In addition, we will present the model justification procedures.
+In this project, we are interested in predicting the popular vote outcome of the 2020 USA federal election. To do this we built a multilevel regression model with a binomial family based on the 25th June, 2020 Nationscape Data set (survey_data). Then, we applied the model to the census_data which we obtained from the 2018 American Community Surveys to make the prediction. In the following sub-sections, we will introduce our model and the post-stratification strategies specifically. In addition, we will present the model justification procedures.
 
 ## Model Specifics
 
