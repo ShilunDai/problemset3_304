@@ -14,7 +14,7 @@
 library(haven)
 library(tidyverse)
 # Read in the raw data (You might need to change this if you use a different dataset)
-raw_data_survey <- read_dta("/Users/shaelyndai/Desktop/ns20200625.dta")
+raw_data_survey <- read_dta("ns20200625.dta")
 # Add the labels
 raw_data_survey <- labelled::to_factor(raw_data_survey)
 

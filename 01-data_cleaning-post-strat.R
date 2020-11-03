@@ -13,7 +13,6 @@
 library(haven)
 library(tidyverse)
 # Read in the raw data.
-setwd("/Users/shaelyndai/Desktop")
 raw_data_census <- read_dta("usa_00001.dta")
 
 # Add the labels
