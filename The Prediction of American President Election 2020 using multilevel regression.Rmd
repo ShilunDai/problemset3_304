@@ -1,0 +1,174 @@
+---
+title: "The Prediction of American President Election 2020 using multilevel regression"
+author: "Weiqian Ding, Shilun Dai, Zeyao Li, Wen Wang"
+date: "2 November 2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(pROC)
+library(knitr)
+library(broom)
+
+
+# Loading in the cleaned survey Data
+survey_data <- read_csv("./../outputs/data/survey_data.csv")
+
+# Loading in the cleaned census Data
+census_data <- read_csv("./../outputs/data/census_data.csv")
+
+```
+
+
+# Model
+In this project, we are interested in predicting the popular vote outcome of the USA federal election. To do this we built a multilevel regression model with a binomial family based on the 25th June, 2020 Nationscape Data set (survey_data). Then, we applied the model to the census_data which we obtained from the 2018 American Community Surveys to make the prediction. In the following sub-sections, we will introduce our model and the post-stratification strategies specifically. In addition, we will present the model justification procedures.
+
+## Model Specifics
+
+```{r, echo=F, warning=F, fig.height=3}
+
+# Creating the Model
+# The best model we found
+model <- glmer(vote_trump~(1|state)+race+agegroup+gender+education+household_income, data = survey_data, family=binomial)
+
+
+# Model Results (to Report in Results section)
+summary(model)
+
+
+prob <- predict(model,type=c('response'))
+model_result <- ifelse(prob >= 0.5, 'Donald Trump','Joe Biden')
+survey_data_result <- cbind(survey_data,model_result)
+
+
+# Model check
+roc <- roc(survey_data_result$vote_2020, prob)
+auc(roc)
+plot(roc, auc.polygon=TRUE, print.auc = TRUE,asp = NA)
+```
+
+In the sample model, we would be using RStudio and fitting data into a multilevel logistic regression to model the probability of supporting Donald Trump. The outcome is either voting for Donald Trump or not, which is binary, so logistic regression is the most appropriate model. A level 2 model would also be built account for different intercepts, and the random intercept model would depend on states. There are five predictor variables in total, including race, age group, gender, education, and household income. Since all independent variables are categorical, dummy variable coding would be used in model fitting. For model checks, we have computed two models of multilevel logistic regression. The model chosen in this study has a lower AIC, and the area under curve is 0.7, which is pretty good since it is greater than 0.5. The level 1 model in our study is presented as following:
+
+$$ log(\frac{\hat{p}}{1-\hat{p}}) = \beta_{0j}+\beta_{1}  x_{race,j} +\beta_{2}  x_{age\:group,j}+\beta_{3}  x_{gender,j}+\\ \beta_{4}  x_{education,j}  + \beta_{5} x_{household\:income,j}+\epsilon_{j}$$
+
+$log(\frac{\hat{p}}{1-\hat{p}})$ represents the log odds of voting for Donald Trump. $\hat{p}$ is the probability of voting for Donald Trump. $\beta_0$ represents the intercept parameter, which shows the log odds of voting for Donald Trump when race is American Indian or Alaska Native; age group is 20 or less; gender is female; education is 3rd Grade or less; state is AK(Alaska), and household income is 100,000 to 124,999 USD. For other $\beta$s, $\beta_1$, $\beta_2$, $\beta_3$, $\beta_4$, and $\beta_5$, they all represent the slope parameters. Each of them shows the change in log odds of voting for Donald Trump when the x corresponding to $\beta$ changes by 1 in dummy variable coding. Lastly, $\epsilon_{j}$ is the random error term.
+
+The level 2 model, "random intercept model", is shown below:
+$$ \beta_{0j}=r_{00} + r_{01}  W_{j} + u_{0j} $$
+$\beta_{0j}$ is the predicated intercept from level 1 model, and each value for j corresponds to a value in the cell variable. $r_{00}$ is the intercept parameter of level 2 model. $r_{01}$ is the slope parameter. $W_{j}$ is the independent variable that influencing state. Lastly, $u_{0j}$ is the random error term.
+
+## Post-Stratification 
+
+In this section, we would talk about our post-stratification process based on how US election works in real life. Post-Stratification is the practice of partitioning data into thousands of demographic cells, and final estimation are calculated by the weighted estimate for each cell. This technique could reduce the bias from non-probability based sampling. To begin our post-stratification process, for each state, we would partition the data into demographic cells by race, gender, household income, education, and age group. Within each state, the post-stratification formula would be used to calculate the probability of voting for Donald Trump. $\hat{y}^{PS}=\frac{\Sigma N_{j} \hat{y}_{j}}{\Sigma N_{j}}$, where in our study, $\hat{y}^{PS}$ is the probability of voting for Donald Trump in a particular state; $\hat{y}_{j}$ is the estimate of probability of voting for Donald Trump in each cell; $N_{j}$ is the number of voters of the $j^{th}$ cell based of chosen demographics. Next, we would perform a summary showing the probability of voting for Donald Trump for each state. By referencing to the official website of USA Government, a new variable containing electoral votes would be added for each state. Thus, since our model is based on probability of voting for Donald Trump, if the probability of voting greater than 0.5 in a state, then we claim that Donald Trump wins all of the electoral votes offered by that state, and vice versa. Lasting, by summing up all of the electoral votes received by Donald Trump and Joe Biden, the person who has more votes would be the President. 
+
+
+```{r, include=FALSE}
+
+# Here I will perform the post-stratification calculation
+census_new <- 
+  census_data %>%
+  group_by(state,agegroup,household_income,gender,education,race) %>% count()
+
+census_new<-census_new %>%
+  mutate(number_in_state = case_when(state=="CA"~11384,state=="TX"~3654,state=="FL"~4740,state=="NY"~4948,state=="IL"~1628,state=="PA"~805,state=="OH"~533,state=="GA"~976,state=="MI"~652,state=="NC"~667,state=="NJ"~2185,state=="VA"~1188,state=="WA"~1090,state=="AZ"~900,state=="IN"~266,state=="MA"~1245,state=="TN"~285,state=="MD"~983,state=="MN"~ 316,state=="MO"~265,state=="WI"~216,state=="AL"~172,state=="CO"~485,state=="SC"~ 270,state=="KY"~156,state=="LA"~197,state=="CT"~475,state=="OK"~159,state=="OR"~362,state=="AR"~109,state=="IA"~105,state=="KS"~148,state=="MS"~86,state=="NV"~578,state=="UT"~183,state=="NE"~71,state=="NM"~187,state=="WV"~48,state=="HI"~308,state=="ID"~75,state=="ME"~67,state=="NH"~124,state=="RI"~166,state=="AK"~57,state=="DE"~81,state=="MT"~34,state=="ND"~31,state=="SD"~10,state=="VT"~48,state=="WY"~19,state=="DC"~97))
+
+census_new<-census_new%>%
+  mutate(cell_prop_of_division_total=n/number_in_state)
+
+census_new$estimate <-
+  model %>%
+  predict(newdata = census_new)
+
+census_new$prob<-exp(census_new$estimate)/(1+exp(census_new$estimate))
+
+state_winner<-census_new %>%
+  mutate(alp_predict_prop = prob*cell_prop_of_division_total) %>% group_by(state) %>%
+  summarise(alp_predict = sum(alp_predict_prop))
+
+state_winner<-state_winner %>% mutate(winner=ifelse(alp_predict > 0.5,"Donald Trump","Joe Biden"))
+
+state_winner <- state_winner %>% mutate(electoral_votes=case_when(
+  state=="CA"~55,state=="TX"~38,state=="FL"~29,state=="NY"~29,state=="IL"~20,
+  state=="PA"~20,state=="OH"~18, state=="GA"~16,state=="MI"~16, 
+  state=="NC"~15,state=="NJ"~14,state=="VA"~13,state=="WA"~12,
+  state=="AZ"~11,state=="IN"~11,state=="MA"~11,state=="TN"~11,
+  state=="MD"~10,state=="MN"~10,state=="MO"~10,state=="WI"~10, state=="AL"~9,
+  state=="CO"~9,state=="SC"~9,state=="KY"~8,state=="LA"~8,
+  state=="CT"~7,state=="OK"~7,state=="OR"~7,state=="AR"~6,state=="IA"~6,    
+  state=="KS"~6,state=="MS"~6,state=="NV"~6,state=="UT"~6,state=="NE"~5,
+  state=="NM"~5,state=="WV"~5,state=="HI"~4,state=="ID"~4,state=="ME"~4,       state=="NH"~4,state=="RI"~4,state=="AK"~3,state=="DE"~3, state=="MT"~3,      state=="ND"~3,state=="SD"~3,state=="VT"~3,state=="WY"~3,state=="DC"~3)) 
+
+election_result <- state_winner %>% 
+  group_by(winner) %>%
+  summarise(total_votes = sum(electoral_votes))
+
+election_result
+```
+
+# Results
+The raw probability of voting Donald Trump we estimated is 47.7%, which is shown in Table 1.
+
+```{r, echo=F}
+kable(survey_data %>% 
+  summarise(support_trump=sum(vote_trump)/nrow(survey_data)), caption = "Table 1: Estimates of Supporting Trump")
+```
+
+We used a multilevel regression model with a binomial family grouped by state in model section which accounted for race, age group, gender, education level, state, and household income to predicate whether or not Trump would win. Through the Post-Stratification grouped by states, we get the Table 2, which represents the winners for each American State.  The second column of the Table 2 represents the proportion of voters in favor of voting for Donald Trump for each state. 
+ 
+```{r, echo=F}
+kable(state_winner, caption = "Table 2: Winners for each American State")
+```
+ 
+Based on winner and votes of each state on Table 2, we could get the estimates of total election votes for Jeo Biden and Donald Trump in the final American President Election. After summing up the electoral votes of each state for each winner, we could get the results, which are shown on Table 3.
+ 
+```{r, echo=F}
+kable(election_result, caption = "Table 3: Total Votes of Donald Trump and Joe Biden")
+```
+
+From the data in Table 3, we can easily see based on our model and predication, Joe Biden would beat Donald Trump and win the election with the number of votes 477 vs 61.
+
+
+
+# Discussion
+Election forcasts not only need to be accurate but also relevant, time-efficient and cost-efficient. In this paper, we select the sample data from the survey about the vote results for 2020 American Election on 25th June, 2020 from the Nationscape Data set. Our census data is a subset of the data of 2018 American Community Survey, due to the time efficient problem, therefore, a bias might exist. We use the sample data and bulid a Multilevel Regression model using a binomial family to predict whether or not Donald Trump would win. Then we use the model built on the sample data to do the poststratification based on states on census data, splitting into cells based on race, gender, household income, education, and age group. After getting the estimates of Donald Trump win rate on each state, if the estimates are greater than 0.5, Donald Trump would win all the votes that state have. This is supported by the rule of American Presidential election.
+
+After that, we could get the predicated total votes for both Donald Trump and Joe Biden, with the number of votes 61 versus 477. Then we predicate Joe Biden would win. If Biden would win the election, this might be a good thing for people in America who are worried about COVID-19. He would have a high probablity to be laser-focused on the threat that COVID-19 has posed to America and the decisive public health and economic steps necessary to get the virus under control and deliver immediate relief to working families, and reopen schools and businesses safely.
+[reference: https://joebiden.com/covid19/]
+
+
+
+## Weaknesses
+Generally, there are four weaknesses in our model. First, the surbey data set we used to build model was generated on 25th June, 2020 which was not the latest data before election. So our model predicition would be just based on the old data, resulting in the decrease of model accuracy. Secondly, the survery data have any NAs and after we do data cleaning and drop theses NAs, the data size would be smaller. And therefore, our built model would not be that accurate.Moreover, the size of census data is not big enough. We just get a subset of the Census data from 2018 American Community Survey due to time efficiency, which means our model would have bias and not that accurate. Furthermore, our computing power and knowledge are limited, so we are unable to build more complex models to predict better results. 
+
+
+## Next Steps
+Our model will be more accurate if we can get the latest data before election. And we can add more data to survey data set or create a follow-up survey to reduce NAs and generate more observations. Last but not least, there is a caveat in the model specific part that would allow for some new technique. 
+
+
+# References
+1. Douglas Bates, Martin Maechler, Ben Bolker, Steve Walker (2015).
+  Fitting Linear Mixed-Effects Models Using lme4. Journal of
+  Statistical Software, 67(1), 1-48. doi:10.18637/jss.v067.i01.
+2. Presidential Election Process. (n.d.). Retrieved November 02, 2020, from   https://www.usa.gov/election
+3. Steven Ruggles, Sarah Flood, Ronald Goeken, Josiah Grover, Erin Meyer, 
+  Jose Pacas and Matthew Sobek. IPUMS USA: Version 10.0 AMERICAN COMMUNITY 
+  SURVEY 2014-2018 5-YEAR SAMPLE. Minneapolis, MN: IPUMS, 2020. 
+  https://doi.org/10.18128/D010.V10.0
+4. Tausanovitch, Chris and Lynn Vavreck. 2020. Democracy Fund + UCLA     
+  Nationscape, October 10-17, 2019 (version 20200814). Retrieved from 
+  https://www.voterstudygroup.org/publication/nationscape-data-set.
+5. Wickham et al., (2019). Welcome to the tidyverse. Journal of Open
+  Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+6. Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti,
+  Frédérique Lisacek, Jean-Charles Sanchez and Markus Müller
+  (2011). pROC: an open-source package for R and S+ to analyze and
+  compare ROC curves. BMC Bioinformatics, 12, p. 77.  DOI:
+  10.1186/1471-2105-12-77
+  <http://www.biomedcentral.com/1471-2105/12/77/>
+7. Yihui Xie (2020). knitr: A General-Purpose Package for Dynamic
+  Report Generation in R. R package version 1.30.
